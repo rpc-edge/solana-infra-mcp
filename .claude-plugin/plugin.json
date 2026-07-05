@@ -1,0 +1,8 @@
+{
+  "name": "solana-infra",
+  "version": "0.1.0",
+  "description": "Solana infrastructure tools for agents: RPC health/latency, priority-fee estimation, leader schedule, chain state, RPC comparison, and signed-transaction relay with on-chain landing confirmation.",
+  "author": { "name": "0xNyk" },
+  "homepage": "https://github.com/rpc-edge/solana-infra-mcp",
+  "license": "MIT"
+}

@@ -3,6 +3,8 @@
 
 import { endpointFor, rpc } from "./rpc.js";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 function percentile(sortedAsc: number[], q: number): number {
   if (sortedAsc.length === 0) return 0;
   const idx = Math.min(sortedAsc.length - 1, Math.max(0, Math.ceil(q * sortedAsc.length) - 1));
@@ -74,6 +76,43 @@ export async function nextLeaders(url: string | undefined, count: number): Promi
   const leaders = await rpc<string[]>(ep.url, "getSlotLeaders", [slot.result, n]);
   const lines = leaders.result.map((id, i) => `  slot ${slot.result + i}  ${id}`);
   return [`${ep.label}: next ${leaders.result.length} slot leaders (from slot ${slot.result})`, ...lines].join("\n");
+}
+
+/** Relay a CALLER-SIGNED base64 transaction and confirm actual on-chain landing.
+    Keyless by design: the server never signs and never holds a keypair - the agent
+    (or its wallet) signs, this just submits + confirms inclusion. */
+export async function submitTransaction(
+  url: string | undefined,
+  signedTxBase64: string,
+  maxWaitMs: number,
+): Promise<string> {
+  const ep = endpointFor(url);
+  const wait = Math.min(Math.max(maxWaitMs, 1000), 90_000);
+
+  const send = await rpc<string>(ep.url, "sendTransaction", [
+    signedTxBase64,
+    { encoding: "base64", skipPreflight: false, maxRetries: 5 },
+  ]);
+  const sig = send.result;
+  const submitSlot = (await rpc<number>(ep.url, "getSlot").catch(() => ({ result: 0 }))).result;
+
+  const started = Date.now();
+  while (Date.now() - started < wait) {
+    const st = await rpc<{
+      value: Array<null | { slot: number; confirmationStatus?: string; err: unknown }>;
+    }>(ep.url, "getSignatureStatuses", [[sig], { searchTransactionHistory: true }]);
+    const s = st.result.value[0];
+    if (s && s.err != null) {
+      return `${ep.label}: FAILED on-chain\n  signature ${sig}\n  err ${JSON.stringify(s.err)}`;
+    }
+    if (s && (s.confirmationStatus === "confirmed" || s.confirmationStatus === "finalized")) {
+      const secs = ((Date.now() - started) / 1000).toFixed(1);
+      const delta = submitSlot ? ` (+${s.slot - submitSlot} slots from submit)` : "";
+      return `${ep.label}: LANDED (${s.confirmationStatus})\n  signature ${sig}\n  slot ${s.slot}${delta}\n  ${secs}s to confirm`;
+    }
+    await sleep(600);
+  }
+  return `${ep.label}: submitted but NOT confirmed within ${wait / 1000}s\n  signature ${sig}\n  (it may still land - check the signature)`;
 }
 
 /** Compare getSlot read latency across endpoints (default: configured + public). */

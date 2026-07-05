@@ -17,6 +17,7 @@ logged, no heavy deps (plain JSON-RPC over `fetch`).
 | `epoch_info` | Where are we in the epoch? slot index, block height |
 | `next_leaders` | Who are the next N slot leaders? (time your submissions) |
 | `latency_compare` | How does my endpoint's read latency compare to a baseline? |
+| `submit_transaction` | Relay a caller-**signed** base64 tx and confirm on-chain landing (keyless) |
 
 ## Add it to Claude
 
@@ -42,6 +43,14 @@ Or in a client config (Claude Desktop / others):
 }
 ```
 
+## Skill & plugin
+
+The repo also ships as a **Claude Code plugin**: `.claude-plugin/plugin.json` + `.mcp.json`
+(registers the server) + a **skill** (`skills/solana-infra/SKILL.md`) that teaches Claude *when*
+to reach for each tool. Because the server is TypeScript, run `pnpm install && pnpm build` once
+so `dist/` exists; then install the plugin dir (or just `claude mcp add` as above).
+(An `npx`-installable published build is on the roadmap.)
+
 ## Provider config
 
 `SOLANA_RPC_URL` sets the default endpoint every tool uses (unset → public mainnet-beta).
@@ -51,12 +60,13 @@ an explicit `url` argument to override per call.
 
 ## Status & roadmap
 
-Working today: the five read-only tools above (verified against live mainnet).
+Working today: six tools (five read-only + keyless `submit_transaction`), all verified against
+live mainnet; a bundled skill + Claude Code plugin.
 
 Next:
-- `submit_transaction` with landing confirmation (opt-in; keypair via env, never committed).
-- `yellowstone_subscribe` — stream slots/accounts/transactions over gRPC.
-- Ship as a Claude Code plugin + skills pack; list in MCP registries.
+- `yellowstone_sample` — a bounded gRPC first-seen/freshness probe (MCP is request/response, so
+  streaming is exposed as a time-boxed sample, not a live subscription).
+- Publish an `npx`-installable build; list in MCP registries + awesome-solana-ai.
 
 ## Develop
 

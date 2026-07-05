@@ -8,7 +8,14 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { defaultEndpoint } from "./rpc.js";
-import { epochInfo, health, latencyCompare, nextLeaders, priorityFees } from "./solana.js";
+import {
+  epochInfo,
+  health,
+  latencyCompare,
+  nextLeaders,
+  priorityFees,
+  submitTransaction,
+} from "./solana.js";
 
 const server = new McpServer({ name: "solana-infra-mcp", version: "0.1.0" });
 
@@ -94,6 +101,27 @@ server.registerTool(
   async ({ urls, samples }) => {
     try {
       return text(await latencyCompare(urls, samples));
+    } catch (e) {
+      return fail(e);
+    }
+  },
+);
+
+server.registerTool(
+  "submit_transaction",
+  {
+    title: "Submit transaction + confirm landing",
+    description:
+      "Relay a caller-SIGNED base64 transaction and confirm actual on-chain inclusion (landed slot + time). Keyless: the server never signs or holds keys - sign upstream, submit here.",
+    inputSchema: {
+      url: urlArg,
+      signedTransaction: z.string().describe("Base64-encoded, fully signed transaction"),
+      maxWaitMs: z.number().int().min(1000).max(90000).default(30000),
+    },
+  },
+  async ({ url, signedTransaction, maxWaitMs }) => {
+    try {
+      return text(await submitTransaction(url, signedTransaction, maxWaitMs));
     } catch (e) {
       return fail(e);
     }
