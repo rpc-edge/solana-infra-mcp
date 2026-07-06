@@ -1,0 +1,12 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.rpc-edge/solana-infra-mcp",
+  "title": "Solana Infra MCP",
+  "description": "Solana infra as MCP tools: RPC health, priority fees, epoch/slot, leaders + tx relay.",
+  "repository": {
+    "url": "https://github.com/rpc-edge/solana-infra-mcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://rpcedge.com",
+  "version": "0.1.0"
+}
